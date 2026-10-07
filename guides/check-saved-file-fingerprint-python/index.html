@@ -1,0 +1,105 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checking a Saved File Fingerprint in Python | Tidy Desk Software</title><meta name="description" content="Let&#x27;s check a file against a saved SHA-256 fingerprint and return a match, mismatch or error result another script can use."><link rel="canonical" href="https://baptistsec.github.io/guides/check-saved-file-fingerprint-python/"><meta property="og:type" content="article"><meta property="og:title" content="Checking a Saved File Fingerprint in Python"><meta property="og:description" content="Let&#x27;s check a file against a saved SHA-256 fingerprint and return a match, mismatch or error result another script can use."><meta property="og:url" content="https://baptistsec.github.io/guides/check-saved-file-fingerprint-python/"><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Software · Free guides</a></div><main id="main"><h1>Checking a Saved File Fingerprint in Python</h1><p>Let's check a file against a saved SHA-256 fingerprint and return a match, mismatch or error result another script can use.</p>
+<p>A fingerprint is a fixed-length value calculated from contents. SHA-256 is the hash method used here, displayed as 64 hexadecimal characters: digits <code>0</code> to <code>9</code> and letters <code>a</code> to <code>f</code>. We'll supply a known reference first, then change the file.</p>
+<p>You'll need Python 3, a plain-text editor and a command window. No extra packages are required.</p>
+<h2>1. Create the example</h2>
+<p>Save <code>Example.txt</code> containing exactly <code>abc</code>, without a line ending. Its expected value is:</p>
+<pre><code class="language-text">ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+</code></pre>
+<p>A line ending adds bytes, small units of stored data, so a file saved with one will not match this reference.</p>
+<h2>2. Add the fingerprint module</h2>
+<p>A module is a reusable Python source file. Save this as <code>FingerprintFile.py</code>:</p>
+<pre><code class="language-python">import hashlib as HashLib
+import os as Os
+import stat as Stat
+import sys as Sys
+
+
+def FingerprintFile(FilePath):
+    Fingerprint = HashLib.sha256()
+    Total = 0
+    with open(FilePath, "rb") as InputFile:
+        if not Stat.S_ISREG(Os.fstat(InputFile.fileno()).st_mode):
+            raise ValueError("input must be a regular file")
+        while True:
+            Block = InputFile.read(65536)
+            if not Block:
+                break
+            Fingerprint.update(Block)
+            Total += len(Block)
+    return Fingerprint.hexdigest(), Total
+
+
+def Main():
+    if len(Sys.argv) != 2:
+        print("Usage: python3 FingerprintFile.py input-file", file=Sys.stderr)
+        return 2
+    try:
+        Fingerprint, Total = FingerprintFile(Sys.argv[1])
+    except (OSError, ValueError) as Problem:
+        print(f"Fingerprint stopped: {Problem}", file=Sys.stderr)
+        return 2
+    print(f"SHA-256: {Fingerprint}")
+    print(f"Bytes read: {Total}")
+    return 0
+
+
+if __name__ == "__main__":
+    Sys.exit(Main())
+</code></pre>
+<p>It reads in binary mode, leaving stored bytes and line endings unchanged, and adds blocks to the calculation. The value and byte count are returned after a complete read succeeds.</p>
+<p>Use known regular files, such as documents. The type check runs after opening, and a special file can block before reaching that check.</p>
+<h2>3. Add the checker</h2>
+<p>Save <code>CheckFingerprint.py</code> beside the module:</p>
+<pre><code class="language-python">import sys as Sys
+from FingerprintFile import FingerprintFile
+
+
+def CheckExpected(Value):
+    if len(Value) != 64 or any(Character not in "0123456789abcdefABCDEF" for Character in Value):
+        raise ValueError("expected fingerprint must be 64 hexadecimal characters")
+    return Value.lower()
+
+
+def Main():
+    if len(Sys.argv) != 3:
+        print("Usage: python3 CheckFingerprint.py input-file expected-sha256", file=Sys.stderr)
+        return 2
+    try:
+        Expected = CheckExpected(Sys.argv[2])
+        Actual, Total = FingerprintFile(Sys.argv[1])
+    except (OSError, ValueError) as Problem:
+        print(f"Check stopped: {Problem}", file=Sys.stderr)
+        return 2
+    if Actual == Expected:
+        print(f"Fingerprint matches; bytes read: {Total}.")
+        return 0
+    print("Fingerprint differs.")
+    return 1
+
+
+if __name__ == "__main__":
+    Sys.exit(Main())
+</code></pre>
+<p><code>CheckExpected</code> accepts exactly 64 hexadecimal characters, converting uppercase letters to lowercase. Spaces, a <code>sha256:</code> prefix and trailing line endings are rejected before opening the file. A correctly shaped but mistyped reference can still pass this check, so choose its source carefully.</p>
+<p><code>Main</code> calculates the current value and compares it with your reference. A failed read is an error, not a mismatch: the complete contents have not been checked.</p>
+<h2>4. Run a match</h2>
+<p>Open a command window in the folder and run:</p>
+<pre><code class="language-text">python3 CheckFingerprint.py Example.txt ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+</code></pre>
+<p>Use your installation's Python 3 command if it is not named <code>python3</code>. The output is:</p>
+<pre><code class="language-text">Fingerprint matches; bytes read: 3.
+</code></pre>
+<p>Change the file to <code>abd</code>, still without a line ending, and run the same command:</p>
+<pre><code class="language-text">Fingerprint differs.
+</code></pre>
+<p>The exit code, a small result number another script can check, is <code>0</code> for a match, <code>1</code> for a complete calculation that differs, and <code>2</code> for a command, reference-format or read error. Keep <code>1</code> and <code>2</code> separate: missing input or a bad reference does not establish changed content.</p>
+<h2>5. Use your own reference</h2>
+<p>Save the expected value separately from the file. If someone can replace both, they can calculate a new fingerprint and make their replacement match. A value from the same untrusted page as a download is not independent reason to trust it.</p>
+<p>This checks contents against your reference, not the publisher's identity, malware or a digital signature, a separate method for checking who approved some data. Open or import the file in its intended application when usability matters.</p>
+<p>The checker passed 20 checks, including invalid references, uppercase letters, read errors and a fixed <code>abc</code> reference that failed after changing the file to <code>abd</code>. The fingerprint module passed 15 separate checks.</p>
+<p>Use a file that will not change during reading. The program does not lock it or take a frozen copy, and follows symbolic links, paths pointing to other files. Reading may affect recorded last-access times. Small read blocks do not impose file-size or runtime limits.</p>
+<p>Different files can share a fixed-length fingerprint. When both stable files are available and you need a direct byte-for-byte answer, compare their contents. Save output under a new report filename, never over the input.</p>
+<h2>Reference</h2>
+<ul>
+<li><a href="https://docs.python.org/3/library/hashlib.html">Python hashlib documentation</a>.</li>
+</ul><h2>More free code guides</h2><ul><li><a href="https://baptistsec.github.io/guides/time-window-log-summary-python/">Building a Time-Window Log Summary in Python</a></li><li><a href="https://baptistsec.github.io/guides/compare-connection-log-summaries-python/">Comparing Connection-Log Summaries in Python</a></li><li><a href="https://baptistsec.github.io/guides/compare-file-contents-python/">Comparing File Contents in Python</a></li><li><a href="https://baptistsec.github.io/guides/file-fingerprint-sha256-python/">Building a File Fingerprint in Python</a></li><li><a href="https://baptistsec.github.io/guides/list-folder-files-python/">Listing a Folder's Files in Python</a></li><li><a href="https://baptistsec.github.io/guides/compare-folder-file-lists-python/">Comparing Folder File Lists in Python</a></li><li><a href="https://baptistsec.github.io/guides/repeated-log-entries-python/">Finding Repeated Log Entries in Python</a></li><li><a href="https://baptistsec.github.io/guides/time-gaps-in-a-log-python/">Finding Time Gaps in a Log with Python</a></li><li><a href="https://baptistsec.github.io/guides/log-entries-per-minute-python/">Counting Log Entries by Minute in Python</a></li></ul></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> &middot; Tidy Desk Software &middot; <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
