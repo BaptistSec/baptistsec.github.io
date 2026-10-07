@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://baptistsec.github.io/sitemap.xml
