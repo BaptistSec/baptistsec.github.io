@@ -1,0 +1,150 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comparing Folder File Lists in Python | Tidy Desk Software</title><meta name="description" content="Compare two folders to find files present on only one side and files whose sizes changed. We&#x27;ll build a review list, then try same-size files with."><link rel="canonical" href="https://baptistsec.github.io/guides/compare-folder-file-lists-python/"><meta property="og:type" content="article"><meta property="og:title" content="Comparing Folder File Lists in Python"><meta property="og:description" content="Compare two folders to find files present on only one side and files whose sizes changed. We&#x27;ll build a review list, then try same-size files with."><meta property="og:url" content="https://baptistsec.github.io/guides/compare-folder-file-lists-python/"><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Software · Free guides</a></div><main id="main"><h1>Comparing Folder File Lists in Python</h1><p>Compare two folders to find files present on only one side and files whose sizes changed. We'll build a review list, then try same-size files with different contents to see what it finds.</p>
+<p>You'll need Python 3, a plain-text editor and a command window. No extra packages are required.</p>
+<h2>1. Prepare the folders</h2>
+<p>Create <code>Before</code> and <code>After</code> with these files and contents:</p>
+<pre><code class="language-text">Before/
+    Note.txt    abc
+    Old.txt     old
+After/
+    Note.txt    xy
+    New.txt     new
+</code></pre>
+<p>Save without line endings to reproduce the sizes below. Sizes are in bytes, small units of stored data. The folder names set the comparison direction, not proof of which copy is older. Keep both programs outside the inputs.</p>
+<h2>2. Add the folder reader</h2>
+<p>Save this as <code>ListFolder.py</code>:</p>
+<pre><code class="language-python">import json as Json
+import sys as Sys
+from pathlib import Path
+
+
+def ListFolder(FolderPath):
+    Folder = Path(FolderPath)
+    if Folder.is_symlink():
+        raise ValueError("folder must not be a symbolic link")
+    if not Folder.is_dir():
+        raise ValueError("input must be a folder")
+    Records = []
+    SkippedLinks = []
+    Pending = [Folder]
+    Seen = 0
+    while Pending:
+        Current = Pending.pop()
+        for Item in Current.iterdir():
+            Seen += 1
+            if Seen &gt; 10000:
+                raise ValueError("folder exceeds the 10000-entry limit")
+            Relative = Item.relative_to(Folder).as_posix()
+            if Item.is_symlink():
+                SkippedLinks.append(Relative)
+            elif Item.is_dir():
+                Pending.append(Item)
+            elif Item.is_file():
+                Records.append({"Path": Relative, "Bytes": Item.stat().st_size})
+            else:
+                raise ValueError("folder contains an unsupported file type")
+    Records.sort(key=lambda Record: Record["Path"])
+    SkippedLinks.sort()
+    return {"Files": Records, "SkippedLinks": SkippedLinks}
+
+
+def Main():
+    if len(Sys.argv) != 2:
+        print("Usage: python3 ListFolder.py folder", file=Sys.stderr)
+        return 2
+    try:
+        Report = ListFolder(Sys.argv[1])
+    except (OSError, ValueError) as Problem:
+        print(f"Listing stopped: {Problem}", file=Sys.stderr)
+        return 2
+    print(Json.dumps(Report, ensure_ascii=True, indent=2))
+    return 1 if Report["SkippedLinks"] else 0
+
+
+if __name__ == "__main__":
+    Sys.exit(Main())
+</code></pre>
+<p>The reader builds an inventory, a list of files and sizes. Paths are relative: the starting folder is removed, so <code>Before/Note.txt</code> and <code>After/Note.txt</code> both become <code>Note.txt</code>.</p>
+<p>It visits subfolders, skips symbolic links (paths pointing to other files or folders), and omits empty folders. Its 10,000-entry limit per input counts folders and links as well as files. A failed walk or unsupported special entry stops the comparison.</p>
+<h2>3. Add the comparison</h2>
+<p>Save this as <code>CompareFolders.py</code> beside the reader:</p>
+<pre><code class="language-python">import json as Json
+import sys as Sys
+from ListFolder import ListFolder
+
+
+def CompareFolders(BeforePath, AfterPath):
+    BeforeReport = ListFolder(BeforePath)
+    AfterReport = ListFolder(AfterPath)
+    Before = {Record["Path"]: Record["Bytes"] for Record in BeforeReport["Files"]}
+    After = {Record["Path"]: Record["Bytes"] for Record in AfterReport["Files"]}
+    OnlyBefore = sorted(Before.keys() - After.keys())
+    OnlyAfter = sorted(After.keys() - Before.keys())
+    Changed = []
+    SameSize = 0
+    for Name in sorted(Before.keys() &amp; After.keys()):
+        if Before[Name] != After[Name]:
+            Changed.append({"Path": Name, "BeforeBytes": Before[Name], "AfterBytes": After[Name]})
+        else:
+            SameSize += 1
+    return {"OnlyBefore": OnlyBefore, "OnlyAfter": OnlyAfter, "SizeChanged": Changed,
+            "SameSizeFiles": SameSize, "BeforeSkippedLinks": BeforeReport["SkippedLinks"],
+            "AfterSkippedLinks": AfterReport["SkippedLinks"]}
+
+
+def Main():
+    if len(Sys.argv) != 3:
+        print("Usage: python3 CompareFolders.py before-folder after-folder", file=Sys.stderr)
+        return 2
+    try:
+        Report = CompareFolders(Sys.argv[1], Sys.argv[2])
+    except (OSError, ValueError) as Problem:
+        print(f"Comparison stopped: {Problem}", file=Sys.stderr)
+        return 2
+    print(Json.dumps(Report, ensure_ascii=True, indent=2))
+    ReviewNeeded = any(Report[Name] for Name in
+                       ["OnlyBefore", "OnlyAfter", "SizeChanged", "BeforeSkippedLinks", "AfterSkippedLinks"])
+    return 1 if ReviewNeeded else 0
+
+
+if __name__ == "__main__":
+    Sys.exit(Main())
+</code></pre>
+<p><code>Before</code> and <code>After</code> are dictionaries, collections for looking up values by keys. Each path points to a size. Subtracting their keys finds paths only on one side; <code>&amp;</code> finds paths on both sides to compare sizes.</p>
+<p>The output uses JSON, a text format for named values and lists. Paths are sorted, and unusual characters are escaped: a newline in a name becomes <code>\n</code> rather than breaking the report into another line.</p>
+<h2>4. Compare the folders</h2>
+<p>Open a command window beside your programs and inputs:</p>
+<pre><code class="language-text">python3 CompareFolders.py Before After
+</code></pre>
+<p>Use your installation's Python 3 command if it is not named <code>python3</code>. The output is:</p>
+<pre><code class="language-json">{
+  "OnlyBefore": [
+    "Old.txt"
+  ],
+  "OnlyAfter": [
+    "New.txt"
+  ],
+  "SizeChanged": [
+    {
+      "Path": "Note.txt",
+      "BeforeBytes": 3,
+      "AfterBytes": 2
+    }
+  ],
+  "SameSizeFiles": 0,
+  "BeforeSkippedLinks": [],
+  "AfterSkippedLinks": []
+}
+</code></pre>
+<p><code>Old.txt</code> exists only in <code>Before</code>, and <code>New.txt</code> only in <code>After</code>. <code>Note.txt</code> is on both sides but changed from three bytes to two. These labels describe the chosen folders, not proof that a file was created or deleted.</p>
+<p>The exit code, a small result number another script can check, is <code>0</code> for matching paths/sizes with no skipped links, <code>1</code> for differences or links to review, and <code>2</code> for a command/comparison error. Even identical skipped links give <code>1</code>, because their targets were not compared.</p>
+<h2>5. Try different content with the same size</h2>
+<p>Change <code>After/Note.txt</code> to <code>xyz</code> without a line ending and rerun. It now contributes to <code>SameSizeFiles</code> rather than <code>SizeChanged</code>, despite having different contents. That is why the program never calls them identical.</p>
+<p>Next, compare their bytes directly or compare a fingerprint, a calculated content-reference value, against a trustworthy saved value. This inventory program copies, overwrites and deletes nothing.</p>
+<p>The comparison passed 16 checks, including reversed direction, nested files, omitted empty folders, links and same-size different content. The reader passed 17 separate checks. The sample output was reproduced.</p>
+<p>Use stable folders: the walks happen one after the other, not at one shared instant. The program does not freeze them, and replacing paths during a walk can change what gets visited. It omits ownership, permissions, empty folders and contents; a matching inventory is not proof that a backup is usable.</p>
+<p>Save output outside both inputs, under a new filename. A report inside one side can list itself, and redirecting over a file you need can destroy it. Keep inventories private when their names reveal personal or work information.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://docs.python.org/3/library/pathlib.html">Python pathlib documentation</a>.</li>
+<li><a href="https://docs.python.org/3.10/library/json.html">Python JSON documentation</a>.</li>
+</ul><h2>More free code guides</h2><ul><li><a href="https://baptistsec.github.io/guides/time-window-log-summary-python/">Building a Time-Window Log Summary in Python</a></li><li><a href="https://baptistsec.github.io/guides/compare-connection-log-summaries-python/">Comparing Connection-Log Summaries in Python</a></li><li><a href="https://baptistsec.github.io/guides/compare-file-contents-python/">Comparing File Contents in Python</a></li><li><a href="https://baptistsec.github.io/guides/file-fingerprint-sha256-python/">Building a File Fingerprint in Python</a></li><li><a href="https://baptistsec.github.io/guides/list-folder-files-python/">Listing a Folder's Files in Python</a></li><li><a href="https://baptistsec.github.io/guides/check-saved-file-fingerprint-python/">Checking a Saved File Fingerprint in Python</a></li><li><a href="https://baptistsec.github.io/guides/repeated-log-entries-python/">Finding Repeated Log Entries in Python</a></li><li><a href="https://baptistsec.github.io/guides/time-gaps-in-a-log-python/">Finding Time Gaps in a Log with Python</a></li><li><a href="https://baptistsec.github.io/guides/log-entries-per-minute-python/">Counting Log Entries by Minute in Python</a></li></ul></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> &middot; Tidy Desk Software &middot; <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
