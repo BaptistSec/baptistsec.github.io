@@ -1,0 +1,64 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Checking IPv4 Subnet Membership in Python | Tidy Desk Software</title><meta name="description" content="Check whether saved IPv4 addresses fall inside a supplied network range. This is a local number check, not a network scan."><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}*{box-sizing:border-box}main,footer{overflow-wrap:anywhere}pre{max-width:100%;overflow-wrap:normal}pre:focus-visible{outline:3px solid #f2b705}h2{break-after:avoid}.print-notice{display:none}@media print{.print-notice{display:block}}@media print{.bar,.skip{display:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:9pt}body{font-size:10.5pt;line-height:1.5}p{margin:0 0 12px}h2{margin-top:20px}footer{margin-top:16px}main,footer{padding:0}}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Software · Free guides</a></div><main id="main"><h1>Checking IPv4 Subnet Membership in Python</h1><p>Check whether saved IPv4 addresses fall inside a supplied network range. This is a local number check, not a network scan.</p><p>You need Python 3.10 or later, a plain-text editor and a command window. No extra packages. Examples are fictional. Sources checked 7 October 2026. Tested locally with Python 3.10.12.</p><p><span class="print-notice">Printed code may wrap long lines. Copy the program from the web page or its original .py file, not from this printout.</span></p><section><h2>1. Create an address list</h2><p>Internet Protocol version 4 (IPv4) addresses have four dot-separated numbers, such as <code>192.0.2.10</code>. A subnet is an address range. The <code>/24</code> in <code>192.0.2.0/24</code> says the first 24 address bits, the zero-or-one parts of its binary number, define the range, here <code>192.0.2.0</code> through <code>192.0.2.255</code>. These example addresses are reserved for documentation, not actual systems to contact.</p><p>Save this plain-text file using UTF-8, a common way to store text, as <code>Addresses.txt</code>, one address per line:</p><pre tabindex="0"><code>192.0.2.0
+192.0.2.10
+192.0.2.255
+198.51.100.4
+not-an-address
+</code></pre></section><section><h2>2. Save the complete program</h2><p>Save this as <code>CheckSubnet.py</code> in the same folder. It reads local text and compares numbers. It sends no network traffic and changes no settings or input files. Code panels scroll sideways on narrow screens so the original lines are preserved.</p><pre tabindex="0"><code>import ipaddress as IpAddress
+import sys as Sys
+from pathlib import Path
+
+
+def CheckSubnet(FileName, NetworkText):
+    Network = IpAddress.IPv4Network(NetworkText, strict=True)
+    with Path(FileName).open(&quot;rb&quot;) as Input:
+        Data = Input.read(1048577)
+    if len(Data) &gt; 1048576:
+        raise ValueError(&quot;input exceeds 1 MiB&quot;)
+    Lines = Data.decode(&quot;utf-8-sig&quot;).splitlines()
+    if len(Lines) &gt; 1000:
+        raise ValueError(&quot;more than 1000 input lines&quot;)
+    Inside = 0
+    Outside = 0
+    Invalid = 0
+    for Number, Line in enumerate(Lines, start=1):
+        Text = Line.strip()
+        try:
+            Address = IpAddress.IPv4Address(Text)
+        except ValueError:
+            Invalid += 1
+            print(f&quot;Line {Number}: invalid IPv4 address&quot;)
+            continue
+        if Address in Network:
+            Inside += 1
+            print(f&quot;Line {Number}: {Address} inside&quot;)
+        else:
+            Outside += 1
+            print(f&quot;Line {Number}: {Address} outside&quot;)
+    print(f&quot;Network: {Network}; inside: {Inside}; outside: {Outside}; invalid: {Invalid}&quot;)
+    return 1 if Invalid else 0
+
+
+def Main():
+    if len(Sys.argv) != 3:
+        print(&quot;Usage: python3 CheckSubnet.py addresses.txt NETWORK&quot;, file=Sys.stderr)
+        return 2
+    try:
+        return CheckSubnet(Sys.argv[1], Sys.argv[2])
+    except (OSError, UnicodeError, ValueError) as Error:
+        print(f&quot;Check stopped: {Error}&quot;, file=Sys.stderr)
+        return 2
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(Main())
+</code></pre></section><section><h2>3. Run the range check</h2><pre tabindex="0"><code>python3 CheckSubnet.py Addresses.txt 192.0.2.0/24</code></pre><p>Use your installation's Python 3 command if it is not named <code>python3</code>. Quote paths containing spaces. Expected output:</p><pre tabindex="0"><code>Line 1: 192.0.2.0 inside
+Line 2: 192.0.2.10 inside
+Line 3: 192.0.2.255 inside
+Line 4: 198.51.100.4 outside
+Line 5: invalid IPv4 address
+Network: 192.0.2.0/24; inside: 3; outside: 1; invalid: 1</code></pre><p>The first and last addresses in this range count as inside it. That does not mean every address can be assigned to a device. Duplicate input addresses are separate lines and count again. Invalid address text is not echoed.</p></section><section><h2>4. Test boundaries and stopped input</h2><p>Save these three lines as <code>Edges.txt</code>:</p><pre tabindex="0"><code>192.0.2.0
+192.0.2.1
+192.0.2.2
+</code></pre><pre tabindex="0"><code>python3 CheckSubnet.py Edges.txt 192.0.2.0/31
+python3 CheckSubnet.py Edges.txt 192.0.2.1/32
+python3 CheckSubnet.py Edges.txt 192.0.2.1/24</code></pre><p>The <code>/31</code> test includes the first two addresses, not the third. The <code>/32</code> test includes only <code>192.0.2.1</code>. The last command stops: <code>192.0.2.1</code> is not the starting network address for <code>/24</code>. Strict parsing does not silently change it to <code>192.0.2.0/24</code>.</p><p>Also test a missing file, an Internet Protocol version 6 (IPv6) address such as <code>::1</code>, an address with extra leading zeros such as <code>192.0.2.01</code>, and a blank line between addresses. The missing file stops the run; the three invalid-address cases are reported by line. Spaces around a valid address are removed before parsing. A final line ending does not create an extra blank line.</p></section><section><h2>5. Interpret the exit code and limits</h2><p>The exit code, a small result number for another program or command window, is <code>0</code> for a completed run with no invalid lines, <code>1</code> for a completed run containing invalid lines, and <code>2</code> for a command, network definition or file-reading error. Outside addresses are normal results, not errors; a run with only outside addresses still returns <code>0</code>. An empty file reports zero counts and returns <code>0</code>, not proof that any address was checked.</p><p>IPv4 only. Supply a network such as <code>192.0.2.0/24</code>; Python also accepts a mask written as four dot-separated numbers: <code>192.0.2.0/255.255.255.0</code> defines the same range as <code>192.0.2.0/24</code>. An address without a mask is treated as <code>/32</code>, a range containing only that one address. The program accepts UTF-8 with or without an initial byte-order marker (BOM), reads at most 1 MiB (mebibyte), exactly 1,048,576 bytes, and permits at most 1,000 input lines. It checks each address directly instead of building a list of every address in the subnet, so a <code>/0</code> range does not require such a list.</p><p>Membership does not prove reachability, ownership, permission, access allowed by a firewall (a traffic-filtering rule) or that an address is suitable for a device. It is not a network scanner. Use a saved copy that will not change while read. Review code before running it. If you save output, use a new filename, never the input filename. Reports show valid addresses and may reveal work-network details, so keep them private.</p></section><section><h2>References</h2><ul><li><a href="https://docs.python.org/3/library/ipaddress.html">Python ipaddress reference</a></li><li><a href="https://docs.python.org/3/howto/ipaddress.html">Python ipaddress introduction</a></li><li><a href="https://www.rfc-editor.org/rfc/rfc5737">Published example-address range document (RFC 5737)</a></li></ul></section></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> · Tidy Desk Software · <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
