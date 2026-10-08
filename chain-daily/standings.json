@@ -1,0 +1,11 @@
+{
+ "allTime": [],
+ "asOf": "2026-10-08",
+ "daily": {},
+ "dayRule": "UK date (Europe/London). A run counts for its own UK day and the day after. Codes for future dates are rejected.",
+ "engine": "CH13",
+ "engineSha": "bf9211a5201eb2a0142188112627a462214219b5b65931eb30b2ca3f22b23922",
+ "label": "Verified by exact replay. Not human-verified. Not AI-proof.",
+ "rejectedCount": 0,
+ "replays": 0
+}
