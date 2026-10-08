@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en-GB"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="no-referrer" name="referrer"/><title>Checking CSV Identifier Columns Before a Spreadsheet Import | Tidy Desk Software</title><meta content="Check selected CSV identifier columns for potential leading-zero conversion and long digit strings before a spreadsheet import. Python 3.10 or later." name="description"/><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}*{box-sizing:border-box}main,footer{overflow-wrap:anywhere}pre{max-width:100%;overflow-wrap:normal}pre:focus-visible{outline:3px solid #f2b705}h2{break-after:avoid}.print-notice{display:none}@media print{.print-notice{display:block}}@media print{.bar,.skip{display:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:9pt}body{font-size:10.5pt;line-height:1.5}p{margin:0 0 12px}h2{margin-top:20px}footer{margin-top:16px}main,footer{padding:0}}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Software · Free guides</a></div><main id="main"><h1>Checking CSV Identifier Columns Before a Spreadsheet Import</h1><p>Download the exact checker below, or copy the complete code. This is a local command-line guide, not a browser validator. The file is not uploaded or modified.</p><p><a download="CheckIdentifiers.py" href="CheckIdentifiers.py">Download CheckIdentifiers.py</a></p><p><span class="print-notice">Printed code may wrap long lines. Copy from the web page or original .py file, not this printout.</span></p>
+<p>A product code such as <code>00123</code> is text, even though it looks like a number. Check selected CSV columns for leading zeros and long digit strings before deciding how to import them into a spreadsheet.</p>
+<p>You'll need Python 3.10 or later, a plain-text editor and a command window. No extra packages are required. This check reads the file; it never rewrites cells or opens a spreadsheet.</p>
+<h2>1. Make a practice export</h2>
+<p>CSV means comma-separated values. Quotes allow commas and line breaks inside a field. Save this as <code>sample.csv</code> in UTF-8, the text encoding used here:</p>
+<pre tabindex="0"><code class="language-text">Code,Note
+00123,first item
+1234567890123456,second item
+123.45,not an integer string
+</code></pre>
+<p>Choose <code>Code</code> as an identifier column: its values name things rather than amounts to calculate. The program does not guess which columns are identifiers. You name them in the command.</p>
+<p>Microsoft documents that Excel can remove leading zeros when converting numerical text, and that numerical precision is limited to 15 digits. The CSV text itself still contains the characters; interpretation during import or later re-saving is the risk. A warning here is a prompt to review the import settings, not proof that your chosen importer will change the value.</p>
+<h2>2. Save the checker</h2>
+<p>Save this as <code>CheckIdentifiers.py</code> beside the export:</p>
+<pre tabindex="0"><code class="language-python">import csv as Csv
+import io as Io
+import json as Json
+import sys as Sys
+from pathlib import Path
+
+
+def CheckIdentifiers(FileName, Columns):
+    if len(Columns) != len(set(Columns)):
+        raise ValueError("choose each column once")
+    with Path(FileName).open("rb") as Input:
+        Data = Input.read(1048577)
+    if len(Data) &gt; 1048576:
+        raise ValueError("input exceeds 1 MiB")
+    Csv.field_size_limit(65536)
+    Reader = Csv.reader(Io.StringIO(Data.decode("utf-8-sig"), newline=""), strict=True)
+    try:
+        Header = next(Reader)
+    except StopIteration:
+        raise ValueError("empty input") from None
+    if not Header or any(not Name.strip() for Name in Header):
+        raise ValueError("blank header name")
+    if len(Header) != len(set(Header)):
+        raise ValueError("repeated header name")
+    if any(Name not in Header for Name in Columns):
+        raise ValueError("selected column not found")
+    Indices = [Header.index(Name) for Name in Columns]
+    Warnings = []
+    Records = 0
+    for Records, Row in enumerate(Reader, start=1):
+        if Records &gt; 1000:
+            raise ValueError("more than 1000 data records")
+        if len(Row) != len(Header):
+            raise ValueError(f"record {Records} has wrong field count")
+        for Index in Indices:
+            Value = Row[Index]
+            if not Value or any(Character not in "0123456789" for Character in Value):
+                continue
+            Risks = []
+            if len(Value) &gt; 1 and Value.startswith("0"):
+                Risks.append("potential leading-zero conversion")
+            if len(Value) &gt; 15:
+                Risks.append("potential numeric precision loss")
+            if Risks:
+                Warnings.append({"Record": Records, "EndingLine": Reader.line_num,
+                                 "Column": Index + 1, "Risks": Risks})
+    Report = {"RecordsChecked": Records,
+              "SelectedColumns": [Index + 1 for Index in Indices],
+              "FlaggedCells": len(Warnings), "Warnings": Warnings}
+    print(Json.dumps(Report, indent=2, ensure_ascii=True))
+    return 1 if Warnings else 0
+
+
+def Main():
+    if len(Sys.argv) &lt; 3:
+        print("Usage: python3 CheckIdentifiers.py input.csv COLUMN [COLUMN ...]", file=Sys.stderr)
+        return 2
+    try:
+        return CheckIdentifiers(Sys.argv[1], Sys.argv[2:])
+    except (OSError, UnicodeError, ValueError, Csv.Error) as Error:
+        print(f"Check stopped: {Error}", file=Sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(Main())
+</code></pre>
+<p>The checker parses the default comma/double-quote CSV format. Header names must be nonblank and unique, and each selected name must match a header exactly. <code>Code</code> and <code>code</code> are different. A CSV-reader error or a record with the wrong number of fields stops the whole check. Python's reader reports some parsing errors, but this program does not validate every CSV format or quoting rule. For example, it accepts a quote inside an unquoted field such as <code>a"b</code>.</p>
+<p>Only nonempty strings made entirely of ordinary digits <code>0</code> to <code>9</code> are checked. Two patterns create potential warnings:</p>
+<ul>
+<li>More than one digit beginning with <code>0</code>, such as <code>00123</code>.</li>
+<li>More than 15 digits, such as <code>1234567890123456</code>.</li>
+</ul>
+<p>One cell can have both warnings. Single <code>0</code>, decimal amounts, negative amounts, dates, formulas, non-English digit characters and strings with spaces are not flagged by these rules. Nothing is trimmed or converted. No warning is not a promise of safe import; this is a deliberately narrow check.</p>
+<p>The file limit is 1 MiB (1,048,576 bytes), with at most 1,000 data records and 65,536 characters per parsed field. UTF-8 with an initial byte-order mark, an optional encoding marker, is accepted. Other encodings stop rather than being silently replaced. A semicolon-separated file can appear to be one column, so confirm the separator and header before relying on the results.</p>
+<h2>3. Run it on the named column</h2>
+<p>Open a command window in the folder:</p>
+<pre tabindex="0"><code class="language-text">python3 CheckIdentifiers.py sample.csv Code
+</code></pre>
+<p>Use your installation's Python 3.10-or-later command if it is not called <code>python3</code>. The output is:</p>
+<pre tabindex="0"><code class="language-json">{
+  "RecordsChecked": 3,
+  "SelectedColumns": [
+    1
+  ],
+  "FlaggedCells": 2,
+  "Warnings": [
+    {
+      "Record": 1,
+      "EndingLine": 2,
+      "Column": 1,
+      "Risks": [
+        "potential leading-zero conversion"
+      ]
+    },
+    {
+      "Record": 2,
+      "EndingLine": 3,
+      "Column": 1,
+      "Risks": [
+        "potential numeric precision loss"
+      ]
+    }
+  ]
+}
+</code></pre>
+<p>Record numbers start at the first data record, excluding the header. Column numbers start at 1. <code>EndingLine</code> is the physical line where the CSV record ends; a quoted multiline field still belongs to one record. The report uses JSON, a text format for named values and lists, and omits cell values and header names. Positions and counts can still reveal information, so keep the report private.</p>
+<p>An exit code is the small result number a program returns. This checker returns 0 after a complete check with no flags, 1 after a complete check with potential warnings, and 2 when the check stops. It prints the report only after the reader finishes without an error and every record has the expected field count. A late CSV-reader error or wrong field count produces an error, not a partial clean report. A header-only file completes with zero records; an empty file stops.</p>
+<h2>4. Check two columns and a multiline record</h2>
+<p>Save this new practice file as <code>two-columns.csv</code>:</p>
+<pre tabindex="0"><code class="language-text">Code,OtherCode,Note
+00123,9876543210987654,"one,two"
+123,0004,"first line
+second line"
+</code></pre>
+<p>Name both identifier columns:</p>
+<pre tabindex="0"><code class="language-text">python3 CheckIdentifiers.py two-columns.csv Code OtherCode
+</code></pre>
+<p>The report checks two records and flags three cells. Record 1 has a leading-zero warning in column 1 and a precision warning in column 2. Record 2 has a leading-zero warning in column 2. Its <code>EndingLine</code> is 4, because its quoted note spans physical lines 3 and 4. The note's comma and newline do not create extra records or identifier columns.</p>
+<p>Now misspell <code>OtherCode</code> as <code>Othercode</code> in the command. The check stops with <code>selected column not found</code>; it does not guess a nearby name. Restore the command, then remove the comma between <code>00123</code> and the next value in the practice file. The wrong field count stops the check with no JSON report. Restore the file before using it again.</p>
+<h2>5. Review the spreadsheet import, not the CSV values</h2>
+<p>Keep the original export. Microsoft's <a href="https://support.microsoft.com/en-US/Excel/keeping-leading-zeros-and-large-numbers">leading-zero and large-number guidance</a> explains text-column import through Get &amp; Transform (Power Query). It also describes Automatic Data Conversions settings for Microsoft 365 and Excel 2024 on Windows and Mac; availability depends on your version.</p>
+<p>Choose identifier columns as text during import, inspect the preview, and compare a few imported values with the original text before using or re-saving the workbook. If a conversion step has already changed a value, return to the original export and correct the import steps. Formatting a damaged number afterwards cannot recover digits or zeros that were lost.</p>
+<p>The checker does not configure Excel, test another importer or prove its behavior. It does not add apostrophes, repair dates, validate account numbers or recover lost data. Do not infer that a 16-digit value is wrong, or that a 15-digit value is safe: the column's purpose and import settings matter.</p>
+<p>The supplied test report records 31 command-line checks on Python 3.10.12, covering warning patterns, selected columns, multiline quoting, malformed records, encoding, size, field and record limits, and missing input. Every file test confirmed unchanged bytes. Tests also checked that reports contain no cell values and that a stopped run prints no report.</p>
+<p>Use a saved export that will not change during reading. To save output, choose a new report filename outside the input: shell redirection can replace an existing file before Python runs. This is a free practice check, not a claim of paid demand or importer safety.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://docs.python.org/3/library/csv.html">Python CSV reading and field limits</a></li>
+<li><a href="https://support.microsoft.com/en-US/Excel/keeping-leading-zeros-and-large-numbers">Microsoft: keeping leading zeros and large numbers</a></li>
+</ul></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> · Tidy Desk Software · <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
