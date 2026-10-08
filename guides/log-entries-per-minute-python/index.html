@@ -4,14 +4,24 @@
 <h2>1. Create the log file</h2>
 <p>Use a tab-separated text file with four columns: time, source address, destination address and destination port. The header must be <code>Time</code>, <code>Source</code>, <code>Destination</code>, <code>Port</code>, with actual tabs between the names. A <code>.tsv</code> file is a plain-text table that uses tabs to separate columns.</p>
 <p>Write times as <code>YYYY-MM-DDThh:mm:ssZ</code>. The <code>Z</code> means Coordinated Universal Time (UTC), the shared reference time rather than a local clock. This reader accepts whole seconds in that exact form, not fractional seconds, local offsets such as <code>+01:00</code> or leap-second values. Addresses use Internet Protocol version 4 (IPv4), four dot-separated numbers such as <code>192.0.2.10</code>, without extra leading zeros. Ports are whole numbers from 1 to 65535.</p>
-<p>The sample addresses are reserved for documentation in RFC 5737, a published document describing addresses to use in examples. Preserve the tabs when copying. This is the reader's own input format, not a direct export from a network-monitoring product.</p>
-<p>Save this as <code>Minutes.tsv</code>:</p>
-<pre><code class="language-text">Time	Source	Destination	Port
-2026-09-30T09:02:00Z	192.0.2.10	198.51.100.20	443
-2026-09-30T09:00:00Z	192.0.2.10	198.51.100.20	443
-2026-09-30T09:00:59Z	192.0.2.11	198.51.100.20	443
-2026-09-30T09:01:00Z	192.0.2.10	198.51.100.20	70000
+<p>The sample addresses are reserved for documentation in RFC 5737, a published document describing addresses to use in examples. This is the reader's own input format, not a direct export from a network-monitoring product.</p>
+<p>Save this as <code>MakeMinutes.py</code> in a practice folder:</p>
+<pre><code class="language-python">from pathlib import Path
+
+
+Rows = [
+    "Time\tSource\tDestination\tPort\n",
+    "2026-09-30T09:02:00Z\t192.0.2.10\t198.51.100.20\t443\n",
+    "2026-09-30T09:00:00Z\t192.0.2.10\t198.51.100.20\t443\n",
+    "2026-09-30T09:00:59Z\t192.0.2.11\t198.51.100.20\t443\n",
+    "2026-09-30T09:01:00Z\t192.0.2.10\t198.51.100.20\t70000\n",
+]
+Path("Minutes.tsv").write_bytes("".join(Rows).encode("ascii"))
 </code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 MakeMinutes.py
+</code></pre>
+<p>Use your installation's Python 3 command if it is not named <code>python3</code>. This creates or replaces <code>Minutes.tsv</code>, so use a practice folder without a file you need to keep. The <code>\t</code> sequences write actual tabs and <code>\n</code> writes line feeds; you do not need to insert tabs in your editor.</p>
 <p>The accepted rows are out of time order. The <code>09:01:00</code> row has an unsupported port and will not be counted.</p>
 <h2>2. Add the reader</h2>
 <p>The complete reader is included below so you can run this guide on its own.</p>
@@ -190,7 +200,39 @@ if __name__ == "__main__":
 <p>Two accepted entries fall in <code>09:00</code>, and one in <code>09:02</code>. There is no <code>09:01</code> record under <code>ObservedMinutes</code> because no accepted row was counted there. The rejected row still appears as line 5.</p>
 <p>The exit code, a small result number another script can check, is <code>0</code> for a completed load without rejected rows, <code>1</code> with rejections, and <code>2</code> for a command/load error. A high count does not change it; the program has no unusual-activity threshold.</p>
 <h2>5. Fill the missing minute</h2>
-<p>Change the last port from <code>70000</code> to <code>443</code> and rerun. The row becomes accepted, so <code>09:01:00</code> appears with a count of one. Its earlier absence came from rejection, not proof of zero activity.</p>
+<p>Save this as <code>AcceptMinute.py</code> beside the practice file:</p>
+<pre><code class="language-python">from pathlib import Path
+
+
+Log = Path("Minutes.tsv")
+Data = Log.read_bytes()
+Log.write_bytes(Data.replace(b"\t70000\n", b"\t443\n"))
+</code></pre>
+<p>It replaces the sample's invalid port with <code>443</code>. Use it only on this practice file; it changes the saved bytes. Run:</p>
+<pre><code class="language-text">python3 AcceptMinute.py
+python3 CountByMinute.py Minutes.tsv
+</code></pre>
+<p>The output is now:</p>
+<pre><code class="language-json">{
+  "AcceptedEntries": 4,
+  "ObservedMinutes": [
+    {
+      "MinuteStart": "2026-09-30T09:00:00Z",
+      "Entries": 2
+    },
+    {
+      "MinuteStart": "2026-09-30T09:01:00Z",
+      "Entries": 1
+    },
+    {
+      "MinuteStart": "2026-09-30T09:02:00Z",
+      "Entries": 1
+    }
+  ],
+  "RejectedLines": []
+}
+</code></pre>
+<p>The fourth row is accepted, so <code>09:01:00</code> appears with a count of one. Its earlier absence came from rejection, not proof of zero activity. <code>RejectedLines</code> is empty and the exit code is now <code>0</code>. If you run <code>MakeMinutes.py</code> again, it restores the original sample with the invalid port and the earlier exit code <code>1</code>.</p>
 <p>Only minutes containing accepted rows appear. These are calendar-minute counts, not rates for complete traffic: collection can cover part of the first or last minute, and the file does not declare its collection boundaries. Repeated rows are not automatically distinct actions, and sorting does not fix inaccurate source clocks.</p>
 <p>The counter passed 20 checks, including minute boundaries, midnight, ordering, repeats, omitted minutes and rejected input. Sample output was reproduced and tested inputs remained unchanged.</p>
 <p>Save reports under a new filename: redirecting output over an input can empty it before Python opens it. Keep reports private when they reveal personal or work activity.</p>
