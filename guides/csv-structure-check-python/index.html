@@ -1,65 +1,131 @@
-<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Checking CSV Structure in Python | Tidy Desk Software</title><meta name="description" content="Check whether each CSV data record has the same number of fields as its header. Read the limits before using the result."><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}*{box-sizing:border-box}main,footer{overflow-wrap:anywhere}pre{max-width:100%;overflow-wrap:normal}pre:focus-visible{outline:3px solid #f2b705}h2{break-after:avoid}.print-notice{display:none}@media print{.print-notice{display:block}}@media print{.bar,.skip{display:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:9pt}body{font-size:10.5pt;line-height:1.5}p{margin:0 0 12px}h2{margin-top:20px}footer{margin-top:16px}main,footer{padding:0}}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Software · Free guides</a></div><main id="main"><h1>Checking CSV Structure in Python</h1><p>Check whether each CSV data record has the same number of fields as its header. Read the limits before using the result.</p><p>You need Python 3.10 or later, a plain-text editor and a command window. No extra packages. Examples are fictional. Sources checked 7 October 2026. Tested locally with Python 3.10.12.</p><p><span class="print-notice">Printed code may wrap long lines. Copy the program from the web page or its original .py file, not from this printout.</span></p><section><h2>1. Create a small CSV file</h2><p>CSV means comma-separated values: a text table. This guide uses commas between fields and double quotes around a field that contains a comma or line break. Two double quotes inside a quoted field represent one quote. Save this fictional example as <code>Practice.csv</code> using UTF-8, a common way to store text:</p><pre tabindex="0"><code>Name,Team
-Alice,Support
-Bob,&quot;Repairs, workshop&quot;
-Cara
-</code></pre><p>The first record names the columns. Header names must not be blank or repeated with exactly the same spelling. They are not trimmed or changed: <code>Name</code>, <code>name</code> and <code> Name </code> are different names. This is a deliberate rule, not proof they mean different things.</p></section><section><h2>2. Save the complete program</h2><p>Save this as <code>CheckCsv.py</code> in the same folder. It reads a saved file only. It does not upload, modify or repair that file. Code panels scroll sideways on narrow screens so the original lines are preserved.</p><pre tabindex="0"><code>import csv as Csv
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Checking a CSV File&#x27;s Structure in Python | Tidy Desk Digital</title><meta name="description" content="Find missing fields and repeated column names in a CSV export. This checker reports where the structure breaks without changing the file."><style>body{margin:0;color:#1a1a1a;font:17px/1.55 'Segoe UI',Arial,sans-serif;background:#fff}.bar{background:#1f2a36;color:#fff;border-bottom:6px solid #f2b705;padding:12px 20px;font-weight:700}.bar a{color:#fff;text-decoration:none}main,footer{max-width:820px;margin:auto;padding:22px 20px}h1{font-size:32px;line-height:1.15;margin:8px 0 14px}h2{font-size:23px;margin:30px 0 8px;color:#1f4f7f}a{color:#1a5a94}a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}pre{background:#f3f5f7;border:1px solid #c9d0d6;padding:12px 14px;overflow-x:auto;font:14px/1.45 Consolas,'Courier New',monospace}code{font-family:Consolas,'Courier New',monospace;font-size:.92em}p code,li code{background:#f3f5f7;padding:1px 4px}.glance{border:1px solid #9aa3ab;background:#eef5fc;padding:10px 16px;margin:14px 0}.glance b{color:#1f4f7f}footer{border-top:1px solid #aaa;font-size:14px;color:#333}.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px}*{box-sizing:border-box}main,footer{overflow-wrap:anywhere}pre{max-width:100%;overflow-wrap:normal}pre:focus-visible{outline:3px solid #f2b705}h2{break-after:avoid}.print-notice{display:none}@media print{.print-notice{display:block}}@media print{.bar,.skip{display:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:9pt}body{font-size:10.5pt;line-height:1.5}p{margin:0 0 12px}h2{margin-top:20px}footer{margin-top:16px}main,footer{padding:0}}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="bar"><a href="https://baptistsec.github.io/">Tidy Desk Digital · Free guides</a></div><main id="main"><h1>Checking a CSV File's Structure in Python</h1>
+<p>Find missing fields and repeated column names in a CSV export. This checker reports where the structure breaks without changing the file.</p>
+<p>You'll need Python 3, a plain-text editor and a command window. No extra packages are required.</p>
+<h2>1. Make a practice file</h2>
+<p>CSV means comma-separated values. Commas separate fields, while double quotes let a field contain a comma or a line break. Save this as <code>sample.csv</code> using UTF-8, the text encoding this checker reads:</p>
+<pre><code class="language-text">Name,Note
+Ada,"one,two"
+Ben
+Cara,"first line
+second line"
+</code></pre>
+<p>There are two columns. Ada's note contains a comma inside quotes. Ben's record has only one field. Cara's quoted note spans two physical lines but is still one CSV record.</p>
+<h2>2. Write the checker</h2>
+<p>Save this as <code>CheckCsv.py</code> beside the practice file:</p>
+<pre><code class="language-python">import csv as Csv
 import io as Io
 import sys as Sys
 from pathlib import Path
 
 
 def CheckCsv(FileName):
-    with Path(FileName).open(&quot;rb&quot;) as Input:
+    with Path(FileName).open("rb") as Input:
         Data = Input.read(1048577)
     if len(Data) &gt; 1048576:
-        raise ValueError(&quot;input exceeds 1 MiB&quot;)
-    Text = Data.decode(&quot;utf-8-sig&quot;)
+        raise ValueError("input exceeds 1 MiB")
+    Text = Data.decode("utf-8-sig")
     Csv.field_size_limit(65536)
-    Reader = Csv.reader(Io.StringIO(Text, newline=&quot;&quot;), strict=True)
+    Reader = Csv.reader(Io.StringIO(Text, newline=""), strict=True)
     try:
         Header = next(Reader)
     except StopIteration:
-        raise ValueError(&quot;empty input&quot;) from None
+        raise ValueError("empty input") from None
     if not Header or any(not Name.strip() for Name in Header):
-        raise ValueError(&quot;header contains a blank name&quot;)
+        raise ValueError("header contains a blank name")
     if len(Header) != len(set(Header)):
-        raise ValueError(&quot;header contains repeated names&quot;)
+        raise ValueError("header contains repeated names")
     Good = 0
     Bad = 0
     for Number, Row in enumerate(Reader, start=1):
         if Number &gt; 1000:
-            raise ValueError(&quot;more than 1000 data records&quot;)
+            raise ValueError("more than 1000 data records")
         if len(Row) != len(Header):
             Bad += 1
-            print(f&quot;Record {Number}, ending at line {Reader.line_num}: expected {len(Header)} fields, found {len(Row)}&quot;)
+            print(f"Record {Number}, ending at line {Reader.line_num}: expected {len(Header)} fields, found {len(Row)}")
         else:
             Good += 1
-    print(f&quot;Columns: {len(Header)}; matching records: {Good}; mismatched records: {Bad}&quot;)
+    print(f"Columns: {len(Header)}; matching records: {Good}; mismatched records: {Bad}")
     return 1 if Bad else 0
 
 
 def Main():
     if len(Sys.argv) != 2:
-        print(&quot;Usage: python3 CheckCsv.py input.csv&quot;, file=Sys.stderr)
+        print("Usage: python3 CheckCsv.py input.csv", file=Sys.stderr)
         return 2
     try:
         return CheckCsv(Sys.argv[1])
     except (OSError, UnicodeError, ValueError, Csv.Error) as Error:
-        print(f&quot;Check stopped: {Error}&quot;, file=Sys.stderr)
+        print(f"Check stopped: {Error}", file=Sys.stderr)
         return 2
 
 
-if __name__ == &quot;__main__&quot;:
+if __name__ == "__main__":
     raise SystemExit(Main())
-</code></pre></section><section><h2>3. Run the check</h2><p>Open a command window in that folder. Use your installation's Python 3 command if it is not named <code>python3</code>. Quote a path containing spaces.</p><pre tabindex="0"><code>python3 CheckCsv.py Practice.csv</code></pre><p>Expected output:</p><pre tabindex="0"><code>Record 3, ending at line 4: expected 2 fields, found 1
-Columns: 2; matching records: 2; mismatched records: 1</code></pre><p>The header is not a data record. A quoted field with a line break is still part of one record, so a record number and its physical ending line can differ. This report checks the number of fields, not their values.</p></section><section><h2>4. Test both outcomes</h2><p>Add <code>,Stores</code> after <code>Cara</code> and run again. Expected summary:</p><pre tabindex="0"><code>Columns: 2; matching records: 3; mismatched records: 0</code></pre><p>Save these separate files and test them too:</p><ul><li><code>Duplicate.csv</code>, containing <code>Name,Name</code>: stopped for repeated header names.</li><li><code>BlankHeader.csv</code>, containing <code>Name,</code>: stopped for a blank header name.</li><li>Add an empty line between data records: it is a zero-field mismatch, not silently skipped. A normal final line ending does not add a record.</li><li><code>Broken.csv</code>, containing an unfinished quoted field: stopped with a CSV reading error.</li></ul><p>To test the field-length boundary, save this short test maker as <code>MakeFieldTests.py</code> in a new practice folder. Copy your <code>CheckCsv.py</code> into that folder too. Open a command window in that folder. The test maker creates two new fictional files and refuses to overwrite an existing file. Run it, then check both files. The 65,536-character field should complete; the 65,537-character field should stop.</p><pre tabindex="0"><code>from pathlib import Path
-
-for Size in (65536, 65537):
-    with Path(f&quot;Field{Size}.csv&quot;).open(&quot;x&quot;, encoding=&quot;utf-8&quot;) as Output:
-        Output.write(&quot;Value\n&quot; + &quot;x&quot; * Size + &quot;\n&quot;)</code></pre><pre tabindex="0"><code>python3 MakeFieldTests.py
-python3 CheckCsv.py Field65536.csv
-python3 CheckCsv.py Field65537.csv</code></pre><p>Return to your original practice folder before running the following tests. The contents of <code>Broken.csv</code> for the unfinished-quote test:</p><pre tabindex="0"><code>Name,Team
-Alice,&quot;Support</code></pre><pre tabindex="0"><code>python3 CheckCsv.py Duplicate.csv
-python3 CheckCsv.py BlankHeader.csv
-python3 CheckCsv.py Broken.csv
-python3 CheckCsv.py DoesNotExist.csv</code></pre><p>The missing-file test should stop rather than print a completed summary. Python or operating-system error details may vary.</p></section><section><h2>5. Understand the result and limits</h2><p>An exit code is a small result number a command window or another program can check: <code>0</code> means the check completed with all field counts matching; <code>1</code> means it completed with mismatches; <code>2</code> means the command or reading stopped. A file with only a valid header completes with zero data records. Empty values in data fields are allowed when the field count matches.</p><p>A late reading or limit error can follow printed mismatch lines. Those earlier lines are partial output, not a completed verdict. Require the final summary and a completed exit code before treating a run as complete.</p><p>The program accepts UTF-8 with or without an initial byte-order marker (BOM), a small encoding marker. It reads at most 1 MiB (mebibyte), exactly 1,048,576 bytes, and permits at most 1,000 data records. Each field may contain at most 65,536 characters. A field of 65,537 characters stops the run even when the whole file fits the separate 1 MiB byte limit. It uses the default comma/double-quote format with strict reading enabled; it does not recognise every CSV variation or reject every unusual quote pattern. A semicolon-separated file can be read as one column, so a matching count does not prove the intended format was recognised.</p><p>It does not check required column names, types, dates, totals, duplicated data, formulas or whether an import is safe. It is not a spreadsheet security scanner. Use a small saved copy that will not change during the check. Do not run unknown downloaded code without reviewing it. If you save the output, use a new filename: redirecting output over the input can empty it before Python reads it. Keep reports and file paths private when they concern work.</p></section><section><h2>References</h2><ul><li><a href="https://docs.python.org/3/library/csv.html">Python CSV reader documentation</a></li><li><a href="https://docs.python.org/3/library/codecs.html">Python text encodings</a></li><li><a href="https://www.rfc-editor.org/rfc/rfc4180">Published CSV format document (RFC 4180)</a></li></ul></section></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> · Tidy Desk Software · <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
+</code></pre>
+<p>The program reads at most 1 MiB (1,048,576 bytes, about one million), plus one extra byte to detect a file over the limit. It accepts UTF-8 with or without a byte-order mark (BOM), an optional marker at the beginning of a text file. It then gives Python's CSV reader the text with <code>newline=""</code>, so the CSV reader handles line endings and quoted line breaks.</p>
+<p>Each parsed field is limited to 65,536 characters. A longer field stops the check even if the whole file is under 1 MiB. That separate limit applies to header names and data fields.</p>
+<p>The first record is the header. Each name must contain something other than whitespace, and repeated names stop the check. Matching is exact: <code>Name</code>, <code>name</code> and <code>Name</code> are different names. The checker does not trim or rename columns.</p>
+<p>For each later record, it compares the number of fields with the header's count. It handles at most 1,000 data records. A blank record has zero fields and is reported as a mismatch, rather than silently skipped. <code>strict=True</code> makes the reader stop on CSV syntax problems it detects, such as an unfinished quoted field; it uses comma-separated fields and double quotes, not every system's export rules. A semicolon-separated file can appear to be one valid column, so check the intended separator too.</p>
+<h2>3. Run it and read the result</h2>
+<p>Open a command window in the folder and run:</p>
+<pre><code class="language-text">python3 CheckCsv.py sample.csv
+</code></pre>
+<p>If your installation uses <code>python</code> or <code>py</code> for Python 3, use that command instead. The sample prints:</p>
+<pre><code class="language-text">Record 2, ending at line 3: expected 2 fields, found 1
+Columns: 2; matching records: 2; mismatched records: 1
+</code></pre>
+<p>Record 2 is Ben's record. Its physical ending line is line 3 because the header occupies line 1. Cara's two-line note is accepted as one record with two fields.</p>
+<p>An exit code is the small number a program returns when it ends. This checker returns 0 when every data record has the expected field count, 1 when it finishes and finds mismatches, and 2 when it stops because of an input or parsing error. A file containing only a valid header finishes with zero data records. An empty file stops because there is no header.</p>
+<p>A parsing error or record limit can occur after some mismatch messages have printed. If the final message says <code>Check stopped</code>, the earlier lines are partial findings, not a finished check.</p>
+<h2>4. Tell an empty field from a missing field</h2>
+<p>Save a separate file as <code>empty-note.csv</code>:</p>
+<pre><code class="language-text">Name,Note
+Ben,""
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 CheckCsv.py empty-note.csv
+</code></pre>
+<p>An empty quoted note still supplies the second field. The output is:</p>
+<pre><code class="language-text">Columns: 2; matching records: 1; mismatched records: 0
+</code></pre>
+<p>The checker returns exit code 0. Now save <code>missing-note.csv</code> with no comma after Ben:</p>
+<pre><code class="language-text">Name,Note
+Ben
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 CheckCsv.py missing-note.csv
+</code></pre>
+<p>This time the second field is absent, so the checker returns exit code 1:</p>
+<pre><code class="language-text">Record 1, ending at line 2: expected 2 fields, found 1
+Columns: 2; matching records: 0; mismatched records: 1
+</code></pre>
+<p>These are finished checks. To see a check that cannot finish, save <code>repeated-header.csv</code>:</p>
+<pre><code class="language-text">Name,Name
+Ada,hello
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 CheckCsv.py repeated-header.csv
+</code></pre>
+<p>It returns exit code 2 and writes this error:</p>
+<pre><code class="language-text">Check stopped: header contains repeated names
+</code></pre>
+<p>Finally, save <code>unfinished.csv</code>:</p>
+<pre><code class="language-text">Name,Note
+Ada,"unfinished
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 CheckCsv.py unfinished.csv
+</code></pre>
+<p>The unclosed quoted field also returns exit code 2:</p>
+<pre><code class="language-text">Check stopped: unexpected end of data
+</code></pre>
+<p>A blank header name, invalid UTF-8, missing file or file over the size limit also stops the check. The input is only opened for reading; save any output under a different filename so shell redirection does not overwrite the input before the program runs.</p>
+<h2>5. Use the result for the next check</h2>
+<p>A matching field count says nothing about whether an amount, date or name is correct. A record such as <code>Ada,not-a-date</code> still has two fields. Add value checks only after you know the intended meaning of each column.</p>
+<p>Return to <code>sample.csv</code>, fix Ben's record to <code>Ben,hello</code> and run again. The two-line note should still count as one record, and all three data records should now have two fields.</p>
+<p>The program passed 19 command-line checks on Python 3.10.12, including quoted multiline fields, malformed records, header errors and the field/record/file limits. Each file test confirmed unchanged input bytes. Use a saved file that will not change during reading.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://docs.python.org/3/library/csv.html">Python CSV reader and newline handling</a></li>
+<li><a href="https://docs.python.org/3/library/io.html#io.StringIO">Python in-memory text streams</a></li>
+</ul></main><footer><a href="https://baptistsec.github.io/">Free tools and guides</a> · Tidy Desk Digital · <a href="mailto:tidydesksoftware@outlook.com">tidydesksoftware@outlook.com</a></footer></body></html>
