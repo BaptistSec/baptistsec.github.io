@@ -2,7 +2,25 @@
 <p>Compare two folders for missing paths and changed file sizes. Then try different contents with the same size to see what this check misses.</p>
 <p>You'll need Python 3, a plain-text editor and a command window. No extra packages are required.</p>
 <h2>1. Prepare the folders</h2>
-<p>Create <code>Before</code> and <code>After</code> with these files and contents:</p>
+<p>Start in a practice folder without <code>Before</code> or <code>After</code>. Save this as <code>MakeFolders.py</code>:</p>
+<pre><code class="language-python">from pathlib import Path
+
+
+Before = Path("Before")
+After = Path("After")
+if Before.exists() or Before.is_symlink() or After.exists() or After.is_symlink():
+    raise SystemExit("Use a fresh practice folder without Before or After.")
+Before.mkdir()
+After.mkdir()
+(Before / "Note.txt").write_bytes(b"abc")
+(Before / "Old.txt").write_bytes(b"old")
+(After / "Note.txt").write_bytes(b"xy")
+(After / "New.txt").write_bytes(b"new")
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-text">python3 MakeFolders.py
+</code></pre>
+<p>Use your installation's Python 3 command if it is not named <code>python3</code>. It creates:</p>
 <pre><code class="language-text">Before/
     Note.txt    abc
     Old.txt     old
@@ -10,7 +28,8 @@ After/
     Note.txt    xy
     New.txt     new
 </code></pre>
-<p>Save without line endings to reproduce the sizes below. Sizes are in bytes, small units of stored data. The folder names set the comparison direction, not proof of which copy is older. Keep both programs outside the inputs.</p>
+<p>The setup writes exact bytes with no line endings, so editor settings do not change the sizes. A byte is a small unit of stored data. If either name already exists, including as a symbolic link, setup stops before creating or writing anything. Use another practice folder rather than removing files you need. This check is not protection against another process changing the paths during setup.</p>
+<p>The folder names set the comparison direction, not proof of which copy is older. Keep both programs outside the inputs.</p>
 <h2>2. Add the folder reader</h2>
 <p>Save this as <code>ListFolder.py</code>:</p>
 <pre><code class="language-python">import json as Json
@@ -139,7 +158,17 @@ if __name__ == "__main__":
 <p><code>Old.txt</code> exists only in <code>Before</code>, and <code>New.txt</code> only in <code>After</code>. <code>Note.txt</code> is on both sides but changed from three bytes to two. These labels describe the chosen folders, not proof that a file was created or deleted.</p>
 <p>The exit code, a small result number another script can check, is <code>0</code> for matching paths/sizes with no skipped links, <code>1</code> for differences or links to review, and <code>2</code> for a command/comparison error. Even identical skipped links give <code>1</code>, because their targets were not compared.</p>
 <h2>5. Try different content with the same size</h2>
-<p>Change <code>After/Note.txt</code> to <code>xyz</code> without a line ending and rerun. It now contributes to <code>SameSizeFiles</code> rather than <code>SizeChanged</code>, despite having different contents. That is why the program never calls them identical.</p>
+<p>Save this as <code>ChangeNote.py</code> beside your programs, after creating the practice files:</p>
+<pre><code class="language-python">from pathlib import Path
+
+
+Path("After/Note.txt").write_bytes(b"xyz")
+</code></pre>
+<p>This replaces the practice note, not a real recovered file. Run:</p>
+<pre><code class="language-text">python3 ChangeNote.py
+python3 CompareFolders.py Before After
+</code></pre>
+<p><code>SizeChanged</code> is now empty and <code>SameSizeFiles</code> is 1, even though <code>abc</code> and <code>xyz</code> differ. The exit code stays 1 because <code>Old.txt</code> and <code>New.txt</code> are still present on only one side. Same size does not mean identical, and one changed result does not remove the other differences.</p>
 <p>Next, compare their bytes directly or compare a fingerprint, a calculated content-reference value, against a trustworthy saved value. This inventory program copies, overwrites and deletes nothing.</p>
 <p>The comparison passed 16 checks, including reversed direction, nested files, omitted empty folders, links and same-size different content. The reader passed 17 separate checks. The sample output was reproduced.</p>
 <p>Use stable folders: the walks happen one after the other, not at one shared instant. The program does not freeze them, and replacing paths during a walk can change what gets visited. It omits ownership, permissions, empty folders and contents; a matching inventory is not proof that a backup is usable.</p>
