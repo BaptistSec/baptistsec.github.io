@@ -197,6 +197,10 @@ Count Source Destination Port
 Inside window: 3; outside window: 3; rejected: 1. Counts are log entries, not sessions.
 </code></pre>
 <p>The two <code>09:10:00</code> entries are now inside, along with the <code>09:15:00</code> entry. Changing the window changes the question, not the original file.</p>
+<p>The first window is ten minutes long; the second is only five minutes and one second. Their equal totals do not mean equal rates. For two adjacent ten-minute windows, keep the first command and run this for the second:</p>
+<pre><code class="language-text">python3 WindowLog.py window.tsv 2026-09-30T09:10:00Z 2026-09-30T09:20:00Z
+</code></pre>
+<p>The final totals are still <code>Inside window: 3; outside window: 3; rejected: 1</code>. The <code>Window</code> line now ends at <code>09:20:00Z</code>. The first window excludes <code>09:10:00</code>, and the second includes it: the two boundary entries are counted once across the pair, not twice. Both windows contain three accepted entries in ten minutes, but their groups differ. The rejected row remains visible in both reports and cannot be assigned a time.</p>
 <p>For activity comparisons, use equal window lengths and understand the collection period. These are accepted-row counts, not distinct sessions or an attack verdict. Repeated rows count again, and missing collection can make a quiet period look quieter than it was.</p>
 <p>The window and summary-comparison programs passed 22 command-line checks, including both boundaries, out-of-order rows, rejections and invalid settings. Tested inputs remained unchanged.</p>
 <p>Save reports under a new filename: redirecting output over an input can empty it before Python opens it. Keep reports private when they reveal personal or work activity.</p>
