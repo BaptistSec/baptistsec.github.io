@@ -3,9 +3,9 @@
  "asOf": "2026-10-09",
  "daily": {},
  "dayRule": "UK date (Europe/London). A run counts for its own UK day and the day after. Codes for future dates are rejected.",
- "engine": "CH18",
- "engineSha": "0fbb7ce14f1e3ee0c76aae46331e3df9c5e37c0df3c70e500ec6c456e023f16c",
- "label": "Verified by exact replay. Not human-verified. Not AI-proof.",
+ "engine": "CH19",
+ "engineSha": "420e6bf2378a94d4128433d26b35f04e23625acbec565d6399433661b78a5bd4",
+ "label": "Verified by exact replay. Not human-verified.",
  "rejectedCount": 0,
  "replays": 0
 }
