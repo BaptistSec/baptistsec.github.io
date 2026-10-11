@@ -4,7 +4,7 @@
  "daily": {},
  "dayRule": "UK date (Europe/London). A run counts for its own UK day and the day after. Codes for future dates are rejected.",
  "engine": "CH21",
- "engineSha": "cda506042917f526cd89b6385ca3a68f8a2884721d0ee5504e6c29924dd05965",
+ "engineSha": "fd880a9fbe9f3a01eb75df06755ce215e93b5aa70cc64a1d2aeb701b121cfb1a",
  "label": "Verified by exact replay. Not human-verified.",
  "rejectedCount": 0,
  "replays": 0
