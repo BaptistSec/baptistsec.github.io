@@ -29,8 +29,8 @@ function ParseCsv(Text){
 }
 function Inspect(Table,Indices){
  if(!Indices.length||new Set(Indices).size!==Indices.length||Indices.some(I=>!Number.isInteger(I)||I<0||I>=Table.header.length))throw Error('Choose at least one column, once each.');
- const Warnings=[];Table.rows.forEach((Row,R)=>Indices.forEach(I=>{let V=Row.cells[I];if(!/^[0-9]+$/.test(V))return;let Risks=[];if(V.length>1&&V[0]==='0')Risks.push('Potential leading-zero conversion');if(V.length>15)Risks.push('Potential numeric precision loss');if(Risks.length)Warnings.push({record:R+1,line:Row.line,column:I+1,risks:Risks});}));
- return {records:Table.rows.length,columns:Indices.map(I=>I+1),warnings:Warnings};
+ const Warnings=[];Table.rows.forEach((Row,R)=>Indices.forEach(I=>{let V=Row.cells[I];if(!/^[0-9]+$/.test(V))return;let Risks=[];if(V.length>1&&V[0]==='0')Risks.push('Potential leading-zero conversion');if(V.length>15)Risks.push('Potential numeric precision loss');if(Risks.length)Warnings.push({record:R+1,line:Row.line,column:I+1,name:Table.header[I],risks:Risks});}));
+ return {records:Table.rows.length,columns:Indices.map(I=>I+1),names:Indices.map(I=>Table.header[I]),warnings:Warnings};
 }
 Root.CsvCheck={ParseCsv,Inspect};if(typeof module!=='undefined')module.exports=Root.CsvCheck;
 })(typeof self!=='undefined'?self:globalThis);
